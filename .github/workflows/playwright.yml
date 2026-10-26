@@ -1,27 +1,96 @@
 name: Playwright Tests
+
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: playwright-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BASE_URL: ${{ vars.BASE_URL || 'https://www.automationpratice.com.br' }}
+
 jobs:
-  test:
-    timeout-minutes: 60
+  smoke:
+    name: Smoke (chromium, @smoke)
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
-    - name: Install dependencies
-      run: npm ci
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
-    - name: Run Playwright tests
-      run: npx playwright test
-    - uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() }}
-      with:
-        name: playwright-report
-        path: playwright-report/
-        retention-days: 30
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-pw-chromium-${{ hashFiles('package-lock.json') }}
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+      - name: AUT availability preflight
+        run: |
+          curl -sfL --max-time 20 -o /dev/null "$BASE_URL" \
+            || { echo "::error::AUT indisponivel em $BASE_URL - smoke abortado (infra, nao codigo)."; exit 1; }
+      - name: Run smoke tests
+        run: npm run test:smoke -- --project chromium
+      - name: Upload report + traces (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-smoke
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  full:
+    name: Full matrix (${{ matrix.project }})
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-pw-${{ matrix.project }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps ${{ matrix.project }}
+      - name: AUT availability preflight
+        run: |
+          curl -sfL --max-time 20 -o /dev/null "$BASE_URL" \
+            || { echo "::error::AUT indisponivel em $BASE_URL - full abortado (infra, nao codigo)."; exit 1; }
+      - name: Run tests
+        run: npx playwright test --project ${{ matrix.project }}
+      - name: Upload report + traces
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.project }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 30
+          if-no-files-found: ignore
