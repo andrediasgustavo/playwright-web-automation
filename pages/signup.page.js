@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * Page Object — Cadastro (`/register`) — QAZANDO Shop E-Commerce.
+ * Page Object — Signup (`/register`) — QAZANDO Shop E-Commerce.
  *
  * Locator strategy (verified against the live DOM on 2026-10-25):
  * - The visible labels ("Nome*", "E-mail*", "Senha*") are plain `<label>`
@@ -12,20 +12,20 @@
  *   `open()` waits for the first field to be visible instead of relying on
  *   `load` alone.
  * - `.invalid_input` (inline error) is currently absent on this page: submitting
- *   with empty/invalid data shows no feedback (known defect, CT-CAD-02/03).
+ *   with empty/invalid data shows no feedback (known defect, CT-SIGN-02/03).
  *
  * Extends {@link BasePage} for the shared feedback locators
  * (`errorMessage`, `successDialog`, `successTitle`).
  */
 import { BasePage } from './base.page.js'
 
-export class CadastroPage extends BasePage {
+export class SignupPage extends BasePage {
   /** @param {import('@playwright/test').Page} page */
   constructor(page) {
     super(page)
   }
 
-  /** Nome field (`#user`). @returns {import('@playwright/test').Locator} */
+  /** Name field (`#user`). @returns {import('@playwright/test').Locator} */
   get nameInput() {
     return this.page.locator('#user')
   }
@@ -35,12 +35,12 @@ export class CadastroPage extends BasePage {
     return this.page.locator('#email')
   }
 
-  /** Senha field (`#password`). @returns {import('@playwright/test').Locator} */
+  /** Password field (`#password`). @returns {import('@playwright/test').Locator} */
   get passwordInput() {
     return this.page.locator('#password')
   }
 
-  /** Cadastrar submit button. @returns {import('@playwright/test').Locator} */
+  /** Signup submit button. @returns {import('@playwright/test').Locator} */
   get submitButton() {
     return this.page.getByRole('button', { name: /cadastrar/i })
   }
@@ -56,9 +56,9 @@ export class CadastroPage extends BasePage {
     await this.nameInput.waitFor({ state: 'visible' })
   }
 
-  /** @param {string} nome */
-  async fillName(nome) {
-    await this.nameInput.fill(nome)
+  /** @param {string} name */
+  async fillName(name) {
+    await this.nameInput.fill(name)
   }
 
   /** @param {string} email */

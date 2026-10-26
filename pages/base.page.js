@@ -3,7 +3,7 @@
  * Page Object base — shared building blocks for the QAZANDO Shop E-Commerce.
  *
  * Owns the cross-page feedback locators that used to be duplicated in
- * `login.page.js` and `cadastro.page.js`:
+ * `login.page.js` and `signup.page.js`:
  * - `.invalid_input` — inline field validation message.
  * - `.swal2-popup`   — SweetAlert2 success dialog (and its `.swal2-title`).
  *
