@@ -1,4 +1,3 @@
-
 # Dependencies
 node_modules/
 
@@ -13,6 +12,12 @@ node_modules/
 
 # Trace files
 trace/
+
+# OpenCode worktrees (parallel agent workspaces)
+/.worktrees/
+
+# Playwright MCP artifacts
+/.playwright-mcp/
 
 # IDE
 .vscode/
@@ -36,8 +41,11 @@ temp/
 *.js.map
 
 # Coverage
-yc_coverage/
+nyc_coverage/
 coverage/
+
+# Husky internal state
+.husky/_/
 
 # Node.js
 npm-debug.log*
@@ -51,15 +59,6 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
-# IDE settings
-.vscode/settings.json
-.vscode/tasks.json
-.vscode/launch.json
-.vscode/extensions.json
-
 # Other
-*.log
 *.tmp
 *.temp
-.DS_Store
-Thumbs.db
