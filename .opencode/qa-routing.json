@@ -1,0 +1,23 @@
+{
+  "$comment": "Routing config for the qa-orchestrator plugin. Precedence: these values are overridden by env vars (QA_ROUTER, QA_CHEAP_MODEL, QA_STANDARD_MODEL, QA_DEEP_MODEL, QA_ROUTER_MODEL, TYPESAFE_MODEL, TYPESAFE_ENDPOINT).",
+
+  "router": "jev",
+
+  "routerModel": "openrouter/typesafe/jev-router",
+  "typesafeModel": "jev-latest",
+  "typesafeEndpoint": "https://api.typesafe.ai/v1/systemone",
+
+  "instructions": "Which cost tier should handle this software/QA task",
+
+  "criteria": {
+    "cheap": "Mechanical, repetitive, small or well-specified edits, formatting, test data, renames, writing a straightforward test or spec",
+    "standard": "Normal engineering work: writing or fixing tests, triaging a failure, code review, small refactors",
+    "deep": "Hard architecture, subtle or ambiguous debugging, unclear design, decisions with wide blast radius"
+  },
+
+  "models": {
+    "cheap": "openrouter/deepseek/deepseek-v4.1-flash",
+    "standard": "openrouter/deepseek/deepseek-v4-pro-0813",
+    "deep": "openrouter/qwen/qwen3.8-max-0902"
+  }
+}

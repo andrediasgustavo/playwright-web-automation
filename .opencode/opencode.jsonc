@@ -1,0 +1,80 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // ---------------------------------------------------------------------------
+  // Model routing
+  // Default model: TypeSafe Jev Router served by OpenRouter. It picks the model
+  // + reasoning effort per request and bills through your OpenRouter key. Swap
+  // to a fixed model (e.g. "openrouter/deepseek/deepseek-v4-pro-0813") for
+  // deterministic cost.
+  // Subagent work is additionally tier-routed by the qa-orchestrator plugin
+  // (QA_CHEAP_MODEL, QA_STANDARD_MODEL, QA_DEEP_MODEL, QA_ROUTER,
+  // QA_ROUTER_MODEL, QA_ROUTING).
+  // ---------------------------------------------------------------------------
+  "model": "openrouter/typesafe/jev-router",
+
+  // TypeSafe Jev Router, served by OpenRouter: picks model + reasoning effort
+  // per request (Jev, System One), billed through your OpenRouter key.
+  // Select it as `openrouter/typesafe/jev-router`. Not in models.dev, so it is
+  // registered here explicitly.
+  "providers": {
+    "openrouter": {
+      "models": {
+        "typesafe/jev-router": {
+          "name": "TypeSafe Jev Router",
+          "capabilities": { "tools": true, "input": ["text", "image"], "output": ["text"] },
+          "limit": { "context": 200000, "output": 65536 }
+        }
+      }
+    }
+  },
+
+  // The orchestrator is the primary agent for this project.
+  "default_agent": "qa-lead",
+
+  "permissions": [
+    { "action": "read", "resource": "*", "effect": "allow" },
+    { "action": "glob", "resource": "*", "effect": "allow" },
+    { "action": "grep", "resource": "*", "effect": "allow" },
+    { "action": "edit", "resource": "*", "effect": "allow" },
+    { "action": "skill", "resource": "*", "effect": "allow" },
+    { "action": "subagent", "resource": "*", "effect": "allow" },
+    { "action": "webfetch", "resource": "*", "effect": "allow" },
+    { "action": "websearch", "resource": "*", "effect": "allow" },
+
+    // Shell: automation is allowed, destructive/remote operations ask first.
+    // Keep "ask" rules LAST so they win over the broad allow.
+    { "action": "shell", "resource": "*", "effect": "allow" },
+    { "action": "shell", "resource": "rm -rf *", "effect": "ask" },
+    { "action": "shell", "resource": "git push *", "effect": "ask" },
+    { "action": "shell", "resource": "git reset --hard *", "effect": "ask" },
+    { "action": "shell", "resource": "npm publish *", "effect": "ask" }
+  ],
+
+  "experimental": {
+    // Give agents a todo list for multi-step work.
+    "todo": true,
+    // Allow subagents to spawn their own subagents (orchestrator -> specialists).
+    "subagent_depth": 2,
+    // Write compaction summaries in the background so long runs do not stall.
+    "background_compaction": true
+  },
+
+  // Playwright MCP: lets agents drive a real browser for exploratory testing
+  // and selector discovery. Comment out if you do not want it.
+  "mcp": {
+    "servers": {
+      "playwright": {
+        "type": "local",
+        "command": ["npx", "-y", "@playwright/mcp@latest"]
+      }
+    }
+  },
+
+  // Keep parallel agent work isolated from the main checkout.
+  "worktree": {
+    "directory": ".worktrees"
+  },
+
+  "formatter": true
+}
