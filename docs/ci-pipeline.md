@@ -37,6 +37,33 @@ Job `static-checks` (runs on every push/PR, ~2 min, no browsers):
 Job `secret-scanning`: **gitleaks** scans the history for accidentally committed
 secrets.
 
+### Action runtimes (Node 24)
+
+Every third-party action is pinned to a floating **major** tag, and each one must
+run on the **`node24`** runtime — Node 20 was deprecated on GitHub-hosted runners
+(removal on 23/09/2026) and `actionlint` fails the `static-checks` job when it
+finds a `node20` action. Currently pinned:
+
+| Action                                | Pinned | Runtime |
+| ------------------------------------- | ------ | ------- |
+| `actions/checkout`                    | `@v7`  | node24  |
+| `actions/setup-node`                  | `@v7`  | node24  |
+| `actions/cache`                       | `@v6`  | node24  |
+| `actions/upload-artifact`             | `@v7`  | node24  |
+| `amannn/action-semantic-pull-request` | `@v6`  | node24  |
+| `gitleaks/gitleaks-action`            | `@v3`  | node24  |
+| `reviewdog/action-actionlint`         | `@v1`  | docker  |
+
+> `node-version: 20` in `setup-node` is unrelated: that is the **Node.js used by
+> the project** (`npm ci`, Playwright), not the runtime of the actions.
+
+To reproduce/check locally, run the same actionlint the CI action ships
+(`reviewdog/action-actionlint@v1` installs `kjanat/actionlint`):
+
+```sh
+actionlint .github/workflows/*.yml   # v1.17+ has the runtime deprecation check
+```
+
 ### `pr-checks.yml` — PR Checks (pull_request)
 
 - The **PR title** must follow Conventional Commits
