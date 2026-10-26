@@ -1,0 +1,11 @@
+node_modules
+playwright-report
+test-results
+.playwright-mcp
+.worktrees
+.husky
+.agents
+.opencode
+.github
+package-lock.json
+skills-lock.json
