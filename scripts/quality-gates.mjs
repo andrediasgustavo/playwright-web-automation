@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Quality gates — barra código/config ruim antes do commit (husky) e no CI.
-// Uso: node scripts/quality-gates.mjs   (ou: npm run gates)
-// Sem dependências externas — apenas Node stdlib.
+// Quality gates — block bad code/config before commit (husky) and in CI.
+// Usage: node scripts/quality-gates.mjs   (or: npm run gates)
+// No external dependencies — Node stdlib only.
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
@@ -21,20 +21,20 @@ const walk = (dir, exts, out = []) => {
   return out
 }
 
-// 1) Anti-padrões de teste em tests/ e pages/
+// 1) Test anti-patterns in tests/ and pages/
 const FORBIDDEN = [
-  { re: /\btest\.only\b|\bfit\(|\bfdescribe\(|\.only\(/, msg: 'test.only/fit/fdescribe proibido' },
-  { re: /waitForTimeout\s*\(/, msg: 'waitForTimeout proibido (use web-first assertions)' },
-  { re: /page\.pause\s*\(/, msg: 'page.pause() de debug não pode subir' },
+  { re: /\btest\.only\b|\bfit\(|\bfdescribe\(|\.only\(/, msg: 'test.only/fit/fdescribe forbidden' },
+  { re: /waitForTimeout\s*\(/, msg: 'waitForTimeout forbidden (use web-first assertions)' },
+  { re: /page\.pause\s*\(/, msg: 'debug page.pause() must not be committed' },
   {
     re: /waitForLoadState\(\s*['"`]networkidle['"`]/,
-    msg: "waitForLoadState('networkidle') proibido",
+    msg: "waitForLoadState('networkidle') forbidden",
   },
   {
     re: /goto\(\s*['"`]https?:\/\//,
-    msg: 'URL absoluta em goto() — use caminho relativo + baseURL',
+    msg: 'absolute URL in goto() — use a relative path + baseURL',
   },
-  { re: /console\.log\s*\(/, msg: 'console.log esquecido no código de teste' },
+  { re: /console\.log\s*\(/, msg: 'leftover console.log in test code' },
 ]
 const srcFiles = [...walk(join(root, 'tests'), ['.js']), ...walk(join(root, 'pages'), ['.js'])]
 for (const file of srcFiles) {
@@ -47,73 +47,73 @@ for (const file of srcFiles) {
       }
     })
 }
-passes.push(`${srcFiles.length} arquivos de teste varridos por anti-padrões`)
+passes.push(`${srcFiles.length} test files scanned for anti-patterns`)
 
-// 2) Convenções de nomenclatura
+// 2) Naming conventions
 for (const f of readdirSync(join(root, 'tests'))) {
   const full = join(root, 'tests', f)
   if (statSync(full).isFile() && !f.endsWith('.spec.js')) {
-    fail(`tests/${f} — specs devem terminar em .spec.js`)
+    fail(`tests/${f} — specs must end in .spec.js`)
   }
 }
 if (existsSync(join(root, 'pages'))) {
   for (const f of readdirSync(join(root, 'pages'))) {
-    if (!f.endsWith('.page.js')) fail(`pages/${f} — page objects devem terminar em .page.js`)
+    if (!f.endsWith('.page.js')) fail(`pages/${f} — page objects must end in .page.js`)
   }
 }
-passes.push('nomenclatura *.spec.js / *.page.js verificada')
+passes.push('*.spec.js / *.page.js naming verified')
 
-// 3) JSONs de configuração parseiam
+// 3) Config JSONs parse
 for (const j of ['package.json', 'tsconfig.json', '.prettierrc.json', '.lintstagedrc.json']) {
   const full = join(root, j)
   if (!existsSync(full)) continue
   try {
     JSON.parse(readFileSync(full, 'utf8'))
   } catch (e) {
-    fail(`${j} inválido: ${e.message}`)
+    fail(`${j} invalid: ${e.message}`)
   }
 }
-passes.push('JSONs de configuração válidos')
+passes.push('config JSONs are valid')
 
-// 4) package.json: ESM + scripts essenciais
+// 4) package.json: ESM + essential scripts
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
-if (pkg.type !== 'module') fail('package.json sem "type": "module" (código é ESM)')
-if (pkg.main) fail('package.json com "main" — este repo não é uma lib')
+if (pkg.type !== 'module') fail('package.json missing "type": "module" (code is ESM)')
+if (pkg.main) fail('package.json has "main" — this repo is not a library')
 for (const s of ['test', 'test:smoke', 'typecheck', 'lint', 'format:check', 'gates']) {
-  if (!pkg.scripts?.[s]) fail(`package.json sem script "${s}"`)
+  if (!pkg.scripts?.[s]) fail(`package.json missing "${s}" script`)
 }
 passes.push('package.json (type/scripts) ok')
 
-// 5) playwright.config.js: guards mínimos
+// 5) playwright.config.js: minimum guards
 const cfg = readFileSync(join(root, 'playwright.config.js'), 'utf8')
-if (!/forbidOnly:\s*true/.test(cfg)) fail('playwright.config.js deve ter forbidOnly: true')
+if (!/forbidOnly:\s*true/.test(cfg)) fail('playwright.config.js must set forbidOnly: true')
 if (!/process\.env\.BASE_URL/.test(cfg)) {
-  fail('baseURL deve aceitar override via process.env.BASE_URL')
+  fail('baseURL must accept an override via process.env.BASE_URL')
 }
 passes.push('playwright.config.js (forbidOnly/baseURL) ok')
 
-// 6) Lockfile presente (CI usa npm ci)
+// 6) Lockfile present (CI uses npm ci)
 if (!existsSync(join(root, 'package-lock.json'))) {
-  fail('package-lock.json ausente (CI usa npm ci)')
+  fail('package-lock.json missing (CI uses npm ci)')
 } else {
-  passes.push('package-lock.json presente')
+  passes.push('package-lock.json present')
 }
 
-// 7) CI: workflows essenciais existem
+// 7) CI: essential workflows exist
 for (const w of [
   '.github/workflows/playwright.yml',
   '.github/workflows/quality.yml',
   '.github/workflows/pr-checks.yml',
 ]) {
-  if (!existsSync(join(root, w))) fail(`workflow ausente: ${w}`)
+  if (!existsSync(join(root, w))) fail(`workflow missing: ${w}`)
 }
-passes.push('workflows CI presentes')
+passes.push('CI workflows present')
 
 process.stdout.write('QUALITY GATES\n')
 for (const p of passes) process.stdout.write(`  ok  ${p}\n`)
 if (failures.length) {
-  process.stderr.write(`\n${failures.length} problema(s):\n`)
-  for (const f of failures) process.stderr.write(`  ERRO  ${f}\n`)
+  process.stderr.write(`\n${failures.length} problem(s):\n`)
+  for (const f of failures) process.stderr.write(`  ERROR  ${f}\n`)
   process.exit(1)
 }
-process.stdout.write('\nTodos os gates passaram.\n')
+process.stdout.write('\nAll gates passed.\n')
