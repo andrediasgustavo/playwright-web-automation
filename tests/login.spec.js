@@ -2,29 +2,28 @@
 import { test, expect } from '@playwright/test'
 
 import { LoginPage } from '../pages/login.page.js'
-import { credenciaisLogin } from './fixtures/usuarios.js'
+import { loginCredentials } from './fixtures/users.js'
 
 /**
- * Casos CT-LOG-01 .. CT-LOG-08 do plano
- * `docs/plano-de-testes-login-cadastro.md`.
+ * Cases CT-LOG-01 .. CT-LOG-08 from the plan `docs/test-plan-login-signup.md`.
  *
- * Comportamento REAL da AUT (verificado no chromium em 2026-10-25):
- * - É um mock 100% client-side: o login NÃO valida credenciais. Qualquer e-mail
- *   em formato válido + senha não vazia conclui com sucesso.
- * - Sucesso: SweetAlert2 (`.swal2-title` = "Login realizado") + redirect para
- *   `/my-account`, que passa a exibir o e-mail informado no cabeçalho da conta
- *   (`#userLogged` -> "Acompanhe seu pedido <e-mail>"). O diálogo NÃO fecha
- *   sozinho na navegação, então ele segue aberto sobre `/my-account` — por isso
- *   os casos de sucesso assertam a URL antes do diálogo.
- * - Erro de formato: feedback inline em `.invalid_input`
- *   ("E-mail inválido." / "Senha inválida.") e a URL permanece em `/login`.
- * - "Lembrar de mim" (#materialUnchecked) apenas marca/desmarca o checkbox: NÃO
- *   persiste nada (`document.cookie` e `localStorage` permanecem vazios), ou
- *   seja, não existe sessão "lembrada" de verdade.
+ * REAL behavior of the AUT (verified in chromium on 2026-10-25):
+ * - It is a 100% client-side mock: login does NOT validate credentials. Any
+ *   well-formed e-mail plus a non-empty password completes successfully.
+ * - Success: SweetAlert2 (`.swal2-title` = "Login realizado") plus a redirect to
+ *   `/my-account`, which then shows the given e-mail in the account header
+ *   (`#userLogged` -> "Acompanhe seu pedido <e-mail>"). The dialog does NOT
+ *   close on navigation, so it stays open over `/my-account` — which is why the
+ *   success cases assert the URL before the dialog.
+ * - Format error: inline feedback in `.invalid_input` ("E-mail inválido." /
+ *   "Senha inválida.") and the URL stays on `/login`.
+ * - "Lembrar de mim" (#materialUnchecked) only toggles the checkbox: it does NOT
+ *   persist anything (`document.cookie` and `localStorage` stay empty), i.e.
+ *   there is no real "remembered" session.
  */
 test.describe('Login', () => {
   test(
-    'CT-LOG-01 exibe o formulário de login com campos, "Lembrar de mim" e LOGIN',
+    'CT-LOG-01 shows the login form with its fields, the remember-me checkbox and the LOGIN button',
     { tag: ['@smoke'] },
     async ({ page }) => {
       const loginPage = new LoginPage(page)
@@ -41,27 +40,27 @@ test.describe('Login', () => {
   )
 
   test(
-    'CT-LOG-02 realiza login com credenciais válidas e redireciona para /my-account',
+    'CT-LOG-02 logs in with valid credentials and redirects to /my-account',
     { tag: ['@smoke'] },
     async ({ page }) => {
       const loginPage = new LoginPage(page)
 
       await loginPage.open()
-      await loginPage.fillEmail(credenciaisLogin.email)
-      await loginPage.fillPassword(credenciaisLogin.senha)
+      await loginPage.fillEmail(loginCredentials.email)
+      await loginPage.fillPassword(loginCredentials.password)
       await loginPage.submit()
 
-      // URL primeiro: o redirect é o evento que confirma o fim do fluxo. Se a
-      // ordem fosse invertida, o diálogo poderia ser avaliado durante a navegação.
+      // URL first: the redirect is the event that marks the end of the flow. In
+      // the reverse order the dialog could be evaluated mid-navigation.
       await expect(page).toHaveURL(/\/my-account\/?$/)
       await expect(loginPage.successDialog()).toBeVisible()
       await expect(loginPage.successTitle()).toHaveText('Login realizado')
-      await expect(loginPage.successDialog()).toContainText(credenciaisLogin.email)
+      await expect(loginPage.successDialog()).toContainText(loginCredentials.email)
     }
   )
 
   test(
-    'CT-LOG-03 mantém em /login e mostra "E-mail inválido." ao enviar vazio',
+    'CT-LOG-03 stays on /login and shows "E-mail inválido." when submitting empty',
     { tag: ['@regression'] },
     async ({ page }) => {
       const loginPage = new LoginPage(page)
@@ -75,7 +74,7 @@ test.describe('Login', () => {
   )
 
   test(
-    'CT-LOG-04 mostra "E-mail inválido." com e-mail em formato inválido',
+    'CT-LOG-04 shows "E-mail inválido." with a malformed e-mail',
     { tag: ['@regression'] },
     async ({ page }) => {
       const loginPage = new LoginPage(page)
@@ -91,13 +90,13 @@ test.describe('Login', () => {
   )
 
   test(
-    'CT-LOG-05 mostra "Senha inválida." com e-mail válido e senha vazia',
+    'CT-LOG-05 shows "Senha inválida." with a valid e-mail and an empty password',
     { tag: ['@regression'] },
     async ({ page }) => {
       const loginPage = new LoginPage(page)
 
       await loginPage.open()
-      await loginPage.fillEmail(credenciaisLogin.email)
+      await loginPage.fillEmail(loginCredentials.email)
       await loginPage.submit()
 
       await expect(page).toHaveURL(/\/login\/?$/)
@@ -106,23 +105,23 @@ test.describe('Login', () => {
   )
 
   test(
-    'CT-LOG-06 conclui o login com "Lembrar de mim" marcado',
+    'CT-LOG-06 completes the login with the remember-me checkbox ticked',
     { tag: ['@regression'] },
     async ({ page }) => {
       const loginPage = new LoginPage(page)
 
       await loginPage.open()
-      await loginPage.fillEmail(credenciaisLogin.email)
-      await loginPage.fillPassword(credenciaisLogin.senha)
+      await loginPage.fillEmail(loginCredentials.email)
+      await loginPage.fillPassword(loginCredentials.password)
       await loginPage.rememberMe()
 
       await expect(loginPage.rememberMeCheckbox).toBeChecked()
 
       await loginPage.submit()
 
-      // Sem persistência real: o mock só marca o checkbox na UI — não grava
-      // `document.cookie` nem `localStorage` (ambos continuam vazios após o
-      // login), então nada é "lembrado" em uma próxima visita.
+      // No real persistence: the mock only ticks the checkbox in the UI — it
+      // writes neither `document.cookie` nor `localStorage` (both stay empty after
+      // login), so nothing is "remembered" on a next visit.
       await expect(page).toHaveURL(/\/my-account\/?$/)
       await expect(loginPage.successDialog()).toBeVisible()
       await expect(loginPage.successTitle()).toHaveText('Login realizado')
@@ -130,26 +129,27 @@ test.describe('Login', () => {
   )
 
   test(
-    'CT-LOG-07 redireciona para /my-account e exibe o e-mail da conta',
+    'CT-LOG-07 redirects to /my-account and shows the account e-mail',
     { tag: ['@smoke'] },
     async ({ page }) => {
       const loginPage = new LoginPage(page)
 
       await loginPage.open()
-      await loginPage.fillEmail(credenciaisLogin.email)
-      await loginPage.fillPassword(credenciaisLogin.senha)
+      await loginPage.fillEmail(loginCredentials.email)
+      await loginPage.fillPassword(loginCredentials.password)
       await loginPage.submit()
 
       await expect(page).toHaveURL(/\/my-account\/?$/)
-      // A conta logada exibe o e-mail no cabeçalho (`#userLogged`). O escopo pelo
-      // id é necessário porque o diálogo continua aberto com a mesma string
-      // ("Olá, <e-mail>"), o que tornaria `getByText(email)` ambíguo (strict mode).
-      await expect(page.locator('#userLogged')).toContainText(credenciaisLogin.email)
+      // The logged-in account shows the e-mail in the header (`#userLogged`).
+      // Scoping by id is required because the dialog stays open with the same
+      // string ("Olá, <e-mail>"), which would make `getByText(email)` ambiguous
+      // (strict mode).
+      await expect(page.locator('#userLogged')).toContainText(loginCredentials.email)
     }
   )
 
   test(
-    'CT-LOG-08 acessa /login pelo link "Login" do topo da home',
+    'CT-LOG-08 opens /login from the "Login" link in the home header',
     { tag: ['@regression'] },
     async ({ page }) => {
       const loginPage = new LoginPage(page)
