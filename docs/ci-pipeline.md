@@ -1,116 +1,115 @@
-# Pipeline de CI/CD e Quality Gates
+# CI/CD Pipeline and Quality Gates
 
-> Documentação do pipeline de integração contínua, dos quality gates locais e
-> dos git hooks deste repositório. Última atualização: **26/10/2026**.
+> Documentation of the continuous-integration pipeline, the local quality gates
+> and the git hooks of this repository. Last updated: **26/10/2026**.
 
-## 1. Visão geral
+## 1. Overview
 
-O repositório combina três camadas de garantia de qualidade:
+The repository combines three layers of quality assurance:
 
-1. **CI (GitHub Actions)** — workflows que validam cada push/PR no servidor.
-2. **Quality gates locais** — scripts `npm` que o dev roda antes de commitar.
-3. **Git hooks** — validações automáticas no `commit`, sem depender de disciplina manual.
+1. **CI (GitHub Actions)** — workflows that validate every push/PR on the server.
+2. **Local quality gates** — `npm` scripts the developer runs before committing.
+3. **Git hooks** — automatic validations at `commit` time, without relying on manual discipline.
 
-As três camadas usam **os mesmos comandos** (`npm run gates`, `npm run lint`,
-`npm run format:check`, `npm run typecheck`, `npm test`), então o que roda
-localmente é exatamente o que o CI valida.
+The three layers use **the same commands** (`npm run gates`, `npm run lint`,
+`npm run format:check`, `npm run typecheck`, `npm test`), so what runs locally
+is exactly what CI validates.
 
 ---
 
-## 2. Workflows de CI (`.github/workflows/`)
+## 2. CI workflows (`.github/workflows/`)
 
 ### `quality.yml` — Quality Gates (push/PR/dispatch)
 
-Job `static-checks` (roda em todo push/PR, ~2 min, sem browsers):
+Job `static-checks` (runs on every push/PR, ~2 min, no browsers):
 
-1. `npm ci` — valida lockfile sincronizado (falha se divergir do `package.json`)
-2. `npm run gates` — script próprio (`scripts/quality-gates.mjs`): anti-padrões
-   de teste (`test.only`, `waitForTimeout`, `page.pause()`, `networkidle`,
-   `console.log`, URL absoluta em `goto`), nomenclatura `*.spec.js`/`*.page.js`,
-   JSONs válidos, guards do `playwright.config.js`
-3. `npm run typecheck` — `tsc --noEmit` (checkJs em todo o código)
+1. `npm ci` — validates the lockfile is in sync (fails if it diverges from `package.json`)
+2. `npm run gates` — custom script (`scripts/quality-gates.mjs`): test
+   anti-patterns (`test.only`, `waitForTimeout`, `page.pause()`, `networkidle`,
+   `console.log`, absolute URL in `goto`), `*.spec.js`/`*.page.js` naming, valid
+   JSONs, `playwright.config.js` guards
+3. `npm run typecheck` — `tsc --noEmit` (checkJs across the code)
 4. `npm run lint` — ESLint + `eslint-plugin-playwright`
 5. `npm run format:check` — Prettier
-6. `npm audit --audit-level=high` — vulnerabilidades conhecidas bloqueiam
-7. `actionlint` — lint dos próprios workflows YAML
+6. `npm audit --audit-level=high` — known vulnerabilities block the build
+7. `actionlint` — lint of the YAML workflows themselves
 
-Job `secret-scanning`: **gitleaks** varre o histórico em busca de segredos
-commitados acidentalmente.
+Job `secret-scanning`: **gitleaks** scans the history for accidentally committed
+secrets.
 
 ### `pr-checks.yml` — PR Checks (pull_request)
 
-- **Título do PR** deve seguir Conventional Commits
-  (`amannn/action-semantic-pull-request`); tipos aceitos: `feat fix docs style
+- The **PR title** must follow Conventional Commits
+  (`amannn/action-semantic-pull-request`); accepted types: `feat fix docs style
 refactor perf test build ci chore revert qa`.
-- **Mensagens de commit** do PR são validadas contra o mesmo padrão (merge/
-  revert/fixup/squash são ignorados).
+- The PR's **commit messages** are validated against the same pattern
+  (merge/revert/fixup/squash are ignored).
 
 ### `playwright.yml` — Playwright Tests
 
-| Gatilho                                   | O que roda                                                |
-| ----------------------------------------- | --------------------------------------------------------- |
-| `push` em `main`/`master`                 | job **smoke** (chromium, `@smoke`)                        |
-| `pull_request` para `main`/`master`       | job **smoke** (chromium, `@smoke`)                        |
-| `schedule` (cron `0 3 * * *`, diário 03h) | job **full** (matriz chromium/firefox/webkit em paralelo) |
-| `workflow_dispatch` (manual)              | job **full** (matriz 3 browsers)                          |
+| Trigger                                  | What runs                                                 |
+| ---------------------------------------- | --------------------------------------------------------- |
+| `push` on `main`/`master`                | **smoke** job (chromium, `@smoke`)                        |
+| `pull_request` to `main`/`master`        | **smoke** job (chromium, `@smoke`)                        |
+| `schedule` (cron `0 3 * * *`, daily 03h) | **full** job (chromium/firefox/webkit matrix in parallel) |
+| `workflow_dispatch` (manual)             | **full** job (3-browser matrix)                           |
 
-Proteções embutidas:
+Built-in protections:
 
-- **`concurrency`** — cancela runs duplicados do mesmo branch/PR.
-- **Cache** — npm (`setup-node cache`) e browsers (`~/.cache/ms-playwright`
-  chaveado pelo lockfile).
-- **Preflight da AUT** — `curl` no `BASE_URL` antes dos testes: se o site
-  externo estiver fora, o job falha rápido com mensagem de infra (não parece
-  falha de código). `BASE_URL` é sobrescrevível via GitHub vars.
-- **Artefatos** — `playwright-report/` + `test-results/` (traces/screenshots):
-  no smoke só em falha (7 dias); no full sempre (30 dias), por browser.
+- **`concurrency`** — cancels duplicate runs of the same branch/PR.
+- **Caching** — npm (`setup-node cache`) and browsers (`~/.cache/ms-playwright`
+  keyed by the lockfile).
+- **AUT preflight** — `curl` on `BASE_URL` before the tests: if the external site
+  is down, the job fails fast with an infra message (not a code failure).
+  `BASE_URL` is overridable via GitHub vars.
+- **Artifacts** — `playwright-report/` + `test-results/` (traces/screenshots): in
+  smoke only on failure (7 days); in full always (30 days), per browser.
 
-### `dependabot.yml` — Atualização de dependências
+### `dependabot.yml` — Dependency updates
 
-- **npm**: semanal, até 10 PRs abertos.
-- **github-actions**: semanal.
+- **npm**: weekly, up to 10 open PRs.
+- **github-actions**: weekly.
 
 ---
 
-## 3. Quality gates locais (scripts `npm`)
+## 3. Local quality gates (`npm` scripts)
 
-| Script                    | O que faz                                                   |
-| ------------------------- | ----------------------------------------------------------- |
-| `npm run gates`           | `scripts/quality-gates.mjs` — anti-padrões/naming/configs   |
-| `npm run lint`            | ESLint em todo o repo (regras + `eslint-plugin-playwright`) |
-| `npm run lint:fix`        | ESLint corrigindo o que puder automaticamente               |
-| `npm run format`          | Prettier formatando o repo inteiro (`--write`)              |
-| `npm run format:check`    | Prettier verificando (sem alterar; falha se divergir)       |
-| `npm run typecheck`       | `tsc --noEmit` — checagem de tipos                          |
-| `npm test`                | suíte completa Playwright                                   |
-| `npm run test:smoke`      | testes `@smoke`                                             |
-| `npm run test:regression` | testes `@regression`                                        |
+| Script                    | What it does                                                    |
+| ------------------------- | --------------------------------------------------------------- |
+| `npm run gates`           | `scripts/quality-gates.mjs` — anti-patterns/naming/configs      |
+| `npm run lint`            | ESLint over the whole repo (rules + `eslint-plugin-playwright`) |
+| `npm run lint:fix`        | ESLint fixing what it can automatically                         |
+| `npm run format`          | Prettier formatting the whole repo (`--write`)                  |
+| `npm run format:check`    | Prettier checking (no changes; fails if it diverges)            |
+| `npm run typecheck`       | `tsc --noEmit` — type checking                                  |
+| `npm test`                | full Playwright suite                                           |
+| `npm run test:smoke`      | `@smoke` tests                                                  |
+| `npm run test:regression` | `@regression` tests                                             |
 
-> **Estilo do código**: o repo usa aspas simples e **sem ponto-e-vírgula**.
-> ESLint e Prettier estão configurados para travar esse estilo (`semi: never`,
-> `singleQuote: true`, `avoidEscape`) — não reformate os arquivos para outro
-> padrão.
+> **Code style**: the repo uses single quotes and **no semicolons**. ESLint and
+> Prettier are configured to lock that style (`semi: never`, `singleQuote: true`,
+> `avoidEscape`) — do not reformat files to another style.
 
-> **Pin de versões**: `typescript` e `@types/node` estão pinados
-> (`~5.6.3` / `~22.10.2`) — `typescript@5.9.x` apresentou hang ambiental neste
-> setup. Não "atualize" sem testar `npm run typecheck` antes.
+> **Version pinning**: `typescript` and `@types/node` are pinned (`~5.6.3` /
+> `~22.10.2`) — `typescript@5.9.x` showed an environmental hang in this setup. Do
+> not "upgrade" without running `npm run typecheck` first.
 
 ---
 
 ## 4. Git hooks (Husky + lint-staged + commitlint)
 
-Ativados automaticamente pelo `npm install` (`prepare: husky`).
+Enabled automatically by `npm install` (`prepare: husky`).
 
 ### `pre-commit`
 
-Roda `lint-staged` apenas nos arquivos _staged_:
+Runs `lint-staged` only on the _staged_ files:
 
 - `*.{js,mjs,cjs,json,md}` → `prettier --write`
 - `*.js` → `eslint --fix`
 
 ### `commit-msg`
 
-Valida a mensagem do commit com **Conventional Commits** (`commitlint`):
+Validates the commit message against **Conventional Commits** (`commitlint`):
 
 ```
 tipo(escopo): descrição
@@ -120,28 +119,28 @@ tipos: feat | fix | chore | docs | refactor | test | ci | build | perf | style |
 
 ---
 
-## 5. Fluxo recomendado antes de commitar
+## 5. Recommended flow before committing
 
 ```sh
-npm run gates         # 1. anti-padrões e configs
+npm run gates         # 1. anti-patterns and configs
 npm run lint          # 2. lint
-npm run format:check  # 3. formatação
-npm run typecheck     # 4. tipos
-npm test              # 5. testes
+npm run format:check  # 3. formatting
+npm run typecheck     # 4. types
+npm test              # 5. tests
 ```
 
-O `pre-commit` cuida de formatar/lintar o que você _staging_ automaticamente, e
-o `commit-msg` rejeita mensagens fora do padrão Conventional Commits. O CI
-repete as mesmas validações em cada push/PR.
+The `pre-commit` hook formats/lints what you _stage_ automatically, and the
+`commit-msg` hook rejects messages outside the Conventional Commits pattern. CI
+repeats the same validations on every push/PR.
 
 ---
 
-## 6. Branch protection (configurar no GitHub — precisa de admin)
+## 6. Branch protection (configure on GitHub — requires admin)
 
-Em **Settings → Branches → Branch protection rules** para `main`:
+In **Settings → Branches → Branch protection rules** for `main`:
 
 - [x] Require a pull request before merging
-- [x] Require status checks to pass — marcar como **required**:
+- [x] Require status checks to pass — mark as **required**:
   - `Static checks` (quality.yml)
   - `Secret scanning (gitleaks)` (quality.yml)
   - `Smoke (chromium, @smoke)` (playwright.yml)
