@@ -94,8 +94,13 @@ Built-in protections:
 
 ### `dependabot.yml` — Dependency updates
 
-- **npm**: weekly, up to 10 open PRs.
-- **github-actions**: weekly.
+- **npm** and **github-actions**: weekly schedule, but **version-update PRs are
+  disabled** via `open-pull-requests-limit: 0`. Dependabot still watches for
+  **security vulnerabilities** and raises alerts; it just stops opening
+  automatic bump PRs. To re-enable, set the limit back to a positive number
+  (e.g. `10` for npm) and merge the change — the schedule stays as is.
+- The ecosystem entries are kept in the file (instead of deleting
+  `dependabot.yml`) so alerting and the ability to re-enable stay one line away.
 
 ---
 

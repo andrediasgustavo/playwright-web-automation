@@ -272,7 +272,8 @@ the history (`git log --oneline`).
 audit`, actionlint, gitleaks), `pr-checks.yml` (PR title and conventional
    commits), `playwright.yml` (smoke on push/PR + nightly full matrix,
    concurrency, caches, AUT preflight, artifacts with traces) and Dependabot
-   (npm + actions). See `docs/ci-pipeline.md`.
+   (alerts only — automatic version-update PRs are disabled; npm + actions).
+   See `docs/ci-pipeline.md`.
 7. Apply **branch protection** on GitHub (checklist in `docs/ci-pipeline.md` §6 —
    requires admin).
 8. (Optional) Add a TypeSafe key to use Jev directly (`TYPESAFE_API_KEY`).
